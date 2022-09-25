@@ -25,3 +25,4 @@ for a in TMP PRATE TCDC; do
     /home/steve/data/grib2/wgrib2/wgrib2 ${file} `cat /home/steve/data/places.csv | sed -n '4001,7343p' | awk -F '\t' '{print "-lon",$22,$21}' | tr '\n' ' '` | tr ':' '\n' | grep 'val=' | sed -e 's/^.*val=//g' >> ${dir}/${a}${hour}.txt
   done
 done
+awk -F '\t' '{print $1}' $PWD/../data/places.csv | paste - $(ls -v ${dir}/TMP*.txt | tr '\n' ' ') $(ls -v ${dir}/PRATE*.txt | tr '\n' ' ') $(ls -v ${dir}/TCDC*.txt | tr '\n' ' ') > ${dir}/gdps_places.csv
