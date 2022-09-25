@@ -9,7 +9,7 @@ height_frame=512
 width_frame=1024
 #height_frame=1920
 #width_frame=1080
-resize=75
+resize=50
 
 rm -f $PWD/../tmp/*
 
