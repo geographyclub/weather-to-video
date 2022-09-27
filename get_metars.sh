@@ -1,9 +1,10 @@
 #!/bin/bash
 
 ### download metars
-curl "https://aviationweather.gov/adds/dataserver_current/current/metars.cache.csv" | sed '1,5d' > $PWD/../tmp/metars.csv
+curl "https://aviationweather.gov/adds/dataserver_current/current/metars.cache.csv" | sed '1,5d' > metars.csv
 
-cat > $PWD/../tmp/metars.vrt <<- EOM
+### make vrt file
+cat > metars.vrt <<- EOM
 <OGRVRTDataSource>
   <OGRVRTLayer name='metars'>
     <SrcDataSource>metars.csv</SrcDataSource>
@@ -46,4 +47,4 @@ cat > $PWD/../tmp/metars.vrt <<- EOM
 EOM
 
 ### use vrt to convert to points
-ogr2ogr -overwrite -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' $PWD/../tmp/metars_point.gpkg $PWD/../tmp/metars.vrt
+ogr2ogr -overwrite -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' metars_point.gpkg metars.vrt
