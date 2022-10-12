@@ -2,49 +2,27 @@
 #./get_metar.sh
 #./get_gdps.sh
 
-### for projections around place, extent
-place='New York'
-data=($(psql -d world -c "\COPY (SELECT fid, round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_10m_populated_places WHERE nameascii = '${place}') TO STDOUT"))
-extent=($(( ${data[1]} - 40 )) $(( ${data[2]} - 20 )) $(( ${data[1]} + 40 )) $(( ${data[2]} + 20 )))
-
-### for projections around lon/lat
-#lon_0=60
-#lat_0=0
-lon_0=${data[1]}
-lat_0=${data[2]}
-
-### for projections with prime meridian
-primemeridian=$(psql -d world -c "\COPY (SELECT round(ST_X(ST_ShiftLongitude(geom))) FROM ne_10m_populated_places WHERE nameascii = '${place}') TO STDOUT")
-
-### set projection
-# '+proj=latlong +datum=WGS84 +pm=${primemeridian}dE'
-# '+proj=igh +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs'
-projection='+proj=ortho +lat_0="'${lat_0}'" +lon_0="'${lon_0}'" +ellps='sphere''
-
 ### video options
-height=512
-width=512
-#height_frame=1920
-#width_frame=1080
-height_frame=512
-width_frame=1024
-resize=50
+height=1080
+width=1920
+height_frame=1080
+width_frame=1920
 
 rm -f $PWD/../tmp/*
 
 ### layers
-gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -f 'GTiff' -of 'GTiff' -s_srs "'${projection}'" -r cubicspline -ts ${width} ${height} $PWD/../maps/naturalearth/raster/HYP_HR_SR_OB_DR_5400_2700.tif $PWD/../tmp/layer0.tif
+gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -f 'GTiff' -of 'GTiff' -r cubicspline -ts ${width} 0 $PWD/../maps/naturalearth/raster/HYP_HR_SR_OB_DR.tif $PWD/../tmp/layer0.tif
 
 counter=1
 ls $PWD/../data/gdps/*TCDC*.grib2 | while read file; do
-  gdaldem color-relief -alpha -f 'GRIB' -of 'GTiff' --config GDAL_PAM_ENABLED NO ${file} "$PWD/../data/colors/white-black.txt" /vsistdout/ | gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -f 'GTiff' -of 'GTiff' -t_srs "'${projection}'" -r cubicspline -ts ${width} ${height} /vsistdin/ $PWD/../tmp/layer1_$(printf "%06d" ${counter}).tif
+  gdaldem color-relief -alpha -f 'GRIB' -of 'GTiff' --config GDAL_PAM_ENABLED NO ${file} "$PWD/../data/colors/white-black.txt" /vsistdout/ | gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -f 'GTiff' -of 'GTiff' -r cubicspline -ts ${width} 0 /vsistdin/ $PWD/../tmp/layer1_$(printf "%06d" ${counter}).tif
   (( counter = counter + 1 )) 
 done
 
 ### composite
 count=$(ls $PWD/../tmp/layer1_*.tif | wc -l)
 for (( counter = 1; counter <= ${count}; counter++ )); do
-  convert -size ${width_frame}x${height_frame} xc:none \( $PWD/../tmp/layer0.tif -resize ${resize}% -level 50%,100% \) -gravity center -compose over -composite \( $PWD/../tmp/layer1_$(printf "%06d" ${counter}).tif -resize ${resize}% -level 50%,100% \) -gravity center -compose over -composite $PWD/../tmp/frame_$(printf "%06d" ${counter}).tif
+  convert -size ${width_frame}x${height_frame} xc:none \( $PWD/../tmp/layer0.tif -level 50%,100% \) -gravity center -compose over -composite \( $PWD/../tmp/layer1_$(printf "%06d" ${counter}).tif -level 50%,100% \) -gravity center -compose over -composite $PWD/../tmp/frame_$(printf "%06d" ${counter}).tif
 done
 
 ### stream
